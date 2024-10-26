@@ -55,7 +55,7 @@ services:
       - viziquer-network
 
   postgres:
-    image: postgres
+    image: postgres:17
     restart: unless-stopped
     container_name: postgres
     shm_size: 128mb
