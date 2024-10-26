@@ -2,13 +2,12 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 17.0 (Postgres.app)
--- Dumped by pg_dump version 17.0 (Postgres.app)
+-- Dumped from database version 14.13 (Ubuntu 14.13-0ubuntu0.22.04.1)
+-- Dumped by pg_dump version 14.13 (Ubuntu 14.13-0ubuntu0.22.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
-SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -17,17 +16,227 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+ALTER TABLE IF EXISTS ONLY public.schemata DROP CONSTRAINT IF EXISTS schemata_endpoint_fk;
+DROP INDEX IF EXISTS public.idx_endpoints_url_graph;
+ALTER TABLE IF EXISTS ONLY public.tree_profiles DROP CONSTRAINT IF EXISTS tree_profiles_name_unique;
+ALTER TABLE IF EXISTS ONLY public.tree_profiles DROP CONSTRAINT IF EXISTS tree_profile_pkey;
+ALTER TABLE IF EXISTS ONLY public.schemata_tags DROP CONSTRAINT IF EXISTS schemata_tags_pkey;
+ALTER TABLE IF EXISTS ONLY public.schemata_tags DROP CONSTRAINT IF EXISTS schemata_tags_name_unique;
+ALTER TABLE IF EXISTS ONLY public.schemata_tags DROP CONSTRAINT IF EXISTS schemata_tags_display_name_unique;
+ALTER TABLE IF EXISTS ONLY public.schemata DROP CONSTRAINT IF EXISTS schemata_pkey;
+ALTER TABLE IF EXISTS ONLY public.schemata DROP CONSTRAINT IF EXISTS schemata_display_name_unique;
+ALTER TABLE IF EXISTS ONLY public.ns_prefixes DROP CONSTRAINT IF EXISTS ns_prefixes_pkey;
+ALTER TABLE IF EXISTS ONLY public.endpoints DROP CONSTRAINT IF EXISTS endpoints_pkey;
+DROP VIEW IF EXISTS public.v_configurations;
+DROP TABLE IF EXISTS public.tree_profiles;
+DROP TABLE IF EXISTS public.schemata_tags;
+DROP TABLE IF EXISTS public.schemata;
+DROP TABLE IF EXISTS public.ns_prefixes;
+DROP TABLE IF EXISTS public.endpoints;
+DROP PROCEDURE IF EXISTS public.register_schemata();
+DROP PROCEDURE IF EXISTS public.register_one_schema(IN schema text);
+DROP SCHEMA IF EXISTS public;
 --
 -- Name: public; Type: SCHEMA; Schema: -; Owner: -
 --
 
-CREATE SCHEMA IF NOT EXISTS public;
+CREATE SCHEMA public;
+
 
 --
 -- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: -
 --
 
 COMMENT ON SCHEMA public IS 'standard public schema';
+
+
+--
+-- Name: register_one_schema(text); Type: PROCEDURE; Schema: public; Owner: -
+--
+
+CREATE PROCEDURE public.register_one_schema(IN schema text)
+    LANGUAGE plpgsql
+    AS $$
+    -- version 2024-10-25
+	declare
+	pline empty.parameters%rowtype;
+
+	schema_exists boolean;
+	ptable_exists boolean;
+	schema_already_registered boolean;
+    display_name_collision boolean;
+    endpoint_already_used boolean;
+
+    p_db_schema_name text;
+    p_display_name text;
+    p_schema_description text;
+
+	p_endpoint_url text;
+    p_named_graph text;
+    p_endpoint_public_url text;
+    p_endpoint_type text;
+
+	v_endpoint_id integer;
+
+	BEGIN
+
+	-- TODO: sanitize schema name
+
+	raise notice '';
+	raise notice 'registering schema %', schema;
+
+	-- check if schema not exists
+	SELECT EXISTS (
+	    SELECT FROM 
+        	information_schema.schemata 
+	    WHERE 
+        	schema_name = schema
+    ) into schema_exists;	
+	if not schema_exists then
+		raise notice 'schema % does not exist', schema;
+		return;
+	end if;
+
+    -- check if not already registered
+	select exists (
+		select from public.schemata s
+		where s.db_schema_name = schema
+	) into schema_already_registered;
+	if schema_already_registered then
+		raise notice 'schema % is already registered', schema;
+		return;
+	end if;
+
+    -- check if has the 'parameters' table
+	SELECT EXISTS (
+   		SELECT FROM 
+	        information_schema.tables 
+ 	   	WHERE 
+        	table_schema = schema 
+	        and table_type = 'BASE TABLE'
+    	    and table_name = 'parameters'
+    ) into ptable_exists;
+	if not ptable_exists then
+		raise notice 'schema % does not have parameter table; skipping', schema;
+		return;
+	end if;
+
+
+	-- the real work begins here
+	-- gather data from parameters
+	execute format('select * from %I.parameters where name = %L', schema, 'db_schema_name')  into pline;
+	p_db_schema_name = pline.textvalue;
+	raise notice 'db_schema_name is %', schema;
+    if p_db_schema_name <> schema then
+        raise notice 'provided schema name % differs from the real name %; real name will be used', p_db_schema_name, schema;
+    end if;
+
+	execute format('select * from %I.parameters where name = %L', schema, 'display_name_default')  into pline;
+	p_display_name = coalesce(pline.textvalue, p_db_schema_name, schema);
+	raise notice 'display_name_default is %', p_display_name;
+
+	execute format('select * from %I.parameters where name = %L', schema, 'schema_description')  into pline;
+	p_schema_description = pline.textvalue;
+	raise notice 'schema_description is %', p_schema_description;
+
+
+	execute format('select * from %I.parameters where name = %L', schema, 'endpoint_url')  into pline;
+	p_endpoint_url = pline.textvalue;
+	raise notice 'endpoint_url is %', p_endpoint_url;
+
+	execute format('select * from %I.parameters where name = %L', schema, 'named_graph')  into pline;
+	p_named_graph = pline.textvalue;
+	raise notice 'named_graph is %', p_named_graph;
+
+	execute format('select * from %I.parameters where name = %L', schema, 'endpoint_public_url')  into pline;
+	p_endpoint_public_url = pline.textvalue;
+	raise notice 'endpoint_public_url is %', p_endpoint_public_url;
+
+	execute format('select * from %I.parameters where name = %L', schema, 'endpoint_type')  into pline;
+	p_endpoint_type = coalesce(pline.textvalue, 'generic');
+	raise notice 'endpoint_type is %', p_endpoint_type;
+
+
+    -- ensure that the display name does not collide
+    select exists (
+        select from public.schemata
+        where display_name = p_display_name
+    ) into display_name_collision;
+    if display_name_collision then
+        raise notice 'display name % is already used; using uuid instead', p_display_name;
+        p_display_name := gen_random_uuid()::text;
+    end if;
+
+
+	-- find or insert endpoint
+    insert into public.endpoints (sparql_url, public_url, named_graph, endpoint_type) 
+        values (p_endpoint_url, p_endpoint_public_url, p_named_graph, p_endpoint_type) 
+        on conflict (coalesce(sparql_url, '@@'), coalesce(named_graph, '@@'))
+            DO UPDATE
+            SET public_url = p_endpoint_public_url, endpoint_type = p_endpoint_type
+        returning id into v_endpoint_id;
+
+    -- check if endpoint already used
+    select exists (
+        select from public.schemata
+        where endpoint_id = v_endpoint_id
+    ) into endpoint_already_used;
+    
+
+	-- insert into schemata
+    insert into public.schemata (display_name, db_schema_name, description, endpoint_id, is_active, is_default_for_endpoint, tags) 
+        values(p_display_name, schema, p_schema_description, v_endpoint_id, true, not endpoint_already_used, '{}');
+
+	raise notice 'schema % has been successfully registered', schema;	
+
+	END;
+$$;
+
+
+--
+-- Name: register_schemata(); Type: PROCEDURE; Schema: public; Owner: -
+--
+
+CREATE PROCEDURE public.register_schemata()
+    LANGUAGE plpgsql
+    AS $$
+    -- version 2024-10-25
+	declare
+		one_schema text;
+	BEGIN
+	for one_schema in
+		SELECT schema_name 
+		FROM information_schema.schemata 
+		WHERE schema_name !~ '^pg_' 
+			AND schema_name <> 'information_schema'
+			AND schema_name !~ '^empty'
+			AND schema_name <> 'public'
+		EXCEPT
+		SELECT db_schema_name
+		FROM public.schemata
+	loop
+		call public.register_one_schema(one_schema);	
+	end loop;
+
+    raise notice 'all schemata are in the schema reqistry';
+
+    for one_schema in
+        SELECT db_schema_name
+        FROM public.schemata
+        EXCEPT
+        SELECT schema_name 
+        FROM information_schema.schemata 
+        WHERE schema_name !~ '^pg_' 
+            AND schema_name <> 'information_schema'
+            AND schema_name !~ '^empty'
+            AND schema_name <> 'public'
+    loop
+        raise notice '';
+        raise notice 'orphan registry entry for missing schema % found', one_schema;
+    end loop;
+
+	END;
+$$;
 
 
 SET default_tablespace = '';
@@ -206,8 +415,6 @@ CREATE VIEW public.v_configurations AS
 --
 
 COPY public.endpoints (id, sparql_url, public_url, named_graph, endpoint_type) FROM stdin;
-20	http://85.254.199.72:8890/sparql	\N	http://nobelprizes.local	generic
-134	http://lv.dbpedia.org:3030/starwars/	http://lv.dbpedia.org:3030/starwars/	\N	generic
 \.
 
 
@@ -3026,8 +3233,6 @@ COPY public.ns_prefixes (id, abbr, prefix) FROM stdin;
 --
 
 COPY public.schemata (id, display_name, db_schema_name, description, endpoint_id, is_active, is_default_for_endpoint, order_inx, tags) FROM stdin;
-116	NobelPrizes	nobel_prizes	\N	20	t	t	4	{}
-147	StarWars	starwars	\N	134	t	t	9	{}
 \.
 
 
@@ -3036,9 +3241,7 @@ COPY public.schemata (id, display_name, db_schema_name, description, endpoint_id
 --
 
 COPY public.schemata_tags (id, name, display_name, description, is_active) FROM stdin;
-3	schemas20	schemas20	LOD schema examples	t
-1	demo	Demo	\N	t
-2	sample	Sample	\N	t
+3	lod24	lod24	LOD schema examples	t
 \.
 
 
@@ -3058,7 +3261,7 @@ COPY public.tree_profiles (id, profile_name, data, is_default) FROM stdin;
 -- Name: endpoints_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.endpoints_id_seq', 165, true);
+SELECT pg_catalog.setval('public.endpoints_id_seq', 1, false);
 
 
 --
@@ -3072,7 +3275,7 @@ SELECT pg_catalog.setval('public.ns_prefixes_id_seq', 2802, true);
 -- Name: schemata_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.schemata_id_seq', 187, true);
+SELECT pg_catalog.setval('public.schemata_id_seq', 1, false);
 
 
 --
