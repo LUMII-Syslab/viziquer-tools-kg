@@ -3123,9 +3123,9 @@ COPY starwars.parameters (order_inx, name, textvalue, jsonvalue, comment, id) FR
 10	display_name_default	StarWars	\N	Recommended display name to be used in schema registry.	20
 90	db_schema_name	starwars	\N	Name of the schema by which it is to be known in the visual query environment (must be unique).	1
 20	schema_description	Star Wars	\N	Description of the schema.	2
-30	endpoint_url	http://185.23.162.167:8890/sparql	\N	Default endpoint URL for visual environment projects using this schema (can be overridden in induvidual project settings).	3
+30	endpoint_url	http://85.254.199.72:8890/sparql	\N	Default endpoint URL for visual environment projects using this schema (can be overridden in induvidual project settings).	3
 40	named_graph	http://starwars.org	\N	Default named graph for visual environment projects using this schema.	4
-60	endpoint_public_url	http://185.23.162.167:8890/sparql	\N	Human readable web site of the endpoint, if available.	16
+60	endpoint_public_url	http://85.254.199.72:8890/sparql	\N	Human readable web site of the endpoint, if available.	16
 200	schema_kind	default	\N	One of: default, dbpedia, wikidata, ... .	13
 50	endpoint_type	virtuoso	\N	Type of the endpoint (GENERIC, VIRTUOSO, JENA, BLAZEGRAPH), associated by default with the schema (can be overridden in a project).	12
 500	schema_extraction_details	\N	{"graphName": "http://starwars.org", "endpointUrl": "http://85.254.199.72:8890/sparql", "correlationId": "3466276589409364350", "enableLogging": true, "includedLabels": [], "includedClasses": [], "calculateDataTypes": true, "excludedNamespaces": [], "includedProperties": [], "checkInstanceNamespaces": false, "calculateClosedClassSets": false, "classificationProperties": ["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"], "minimalAnalyzedClassSize": 1, "calculateDomainsAndRanges": true, "calculateCardinalitiesMode": "propertyLevelAndClassContext", "calculateImportanceIndexes": true, "calculateSubClassRelations": true, "calculateSourceAndTargetPairs": true, "calculatePropertyPropertyRelations": true}	JSON with parameters used in schema extraction.	17
