@@ -6,6 +6,7 @@ networks:
 
 services:
   viziquer:
+    platform: linux/amd64
     image: ghcr.io/lumii-syslab/viziquer:development
     depends_on:
       - mongodb
@@ -40,6 +41,7 @@ services:
       - viziquer-network
 
   dss:
+    platform: linux/amd64
     image: ghcr.io/lumii-syslab/data-shape-server:main
     container_name: dss
     restart: unless-stopped
