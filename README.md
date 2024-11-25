@@ -1,3 +1,18 @@
+# Visual Data and Schema Queries over Knowledge Graphs
+
+This repository contains the supporting material and running environment for presenting and analyzing the data schemas, 
+as used by the [ViziQuer](https://github.com/LUMII-Syslab/viziquer), as the knowledge graphs themselves.
+
+The repository supports a demo presentation "Visual Data and Schema Queries over Knowledge Graphs" by Sergejs Rikačovs and Kārlis Čerāns at [EKAW'24](https://event.cwi.nl/ekaw2024/).
+
+The repository has been built as a fork from [ViziQuer Tools](https://github.com/LUMII-Syslab/viziquer-tools) environment that provides containers for [ViziQuer](https://github.com/LUMII-Syslab/viziquer)
+and [Data Shape Server](https://github.com/LUMII-Syslab/data-shape-server) forming together a locally runnable visual schema and query environment. 
+
+This repository provides a new initialization of the ViziQuer Tools environment (in the `db/init/pg` folder) with the schemas for `Nobel Prizes data` and `Nobel Prizes data schema`
+that are referred to from the paper. The considered schemas may be available on [ViziQuer Playground](https://viziquer.app), as well, at least for a while, however, this repository is considered to be 
+the stable resource supporting the papers' presentation.
+
+
 # ViziQuer Tools
 
 This repository contains scripts and initial data for starting your own copy of ViziQuer Tools as a set of interlinked containers.
