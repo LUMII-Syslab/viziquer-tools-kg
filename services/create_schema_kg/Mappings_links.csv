@@ -1,0 +1,43 @@
+﻿URI Pattern 1,Relation,URI Pattern2,,Table,Column,??
+ClassClassRel,base,Classifier,,cc_rels,class_1_id,classes
+ClassClassRel,target,Classifier,,cc_rels,class_2_id,classes
+,,,,,,
+ClassProperty_Class_Rel,linkedClass,Classifier,,cpc_rels,other_class_id,classes
+ClassProperty_Class_Rel,basePair,ClassPropertyPair,,cpc_rels,cp_rel_id,cp_rels
+,,,,,,
+ClassPropertyPair,principalEnd,Classifier,,cp_rels,principal_class_id,classes
+ClassPropertyPair,class,Classifier,,cp_rels,class_id,classes
+ClassPropertyPair,property,Property,,cp_rels,property_id,properties
+,,,,,,
+ClassProperty_Datatype,datatype,Datatype,,cpd_rels,datatype_id,datatypes
+ClassProperty_Datatype,basePair,ClassPropertyPair,,cpd_rels,cp_rel_id,cp_rels
+,,,,,,
+Property_Datatype,datatype,Datatype,,pd_rels,datatype_id,datatypes
+Property_Datatype,property,Property,,pd_rels,property_id,properties
+,,,,,,
+PropertyPropertyRel,property_1,Property,,pp_rels,property_1_id,properties
+PropertyPropertyRel,property_2,Property,,pp_rels,property_2_id,properties
+,,,,,,
+,,,,,,
+Property,domainClass,Classifier,,properties,domain_class_id,classes
+Property,rangeClass,Classifier,,properties,range_class_id,classes
+Property,namespace,Namespace,,properties,ns_id,ns
+,,,,,,
+Classifier,classifIcationProperty,Property,,classes,classification_property_id,properties
+Classifier,datatype,Datatype,,classes,datatype_id,datatypes
+Classifier,principalSuperClass,Classifier,,classes,principal_super_class_id,classes
+Classifier,namespace,Namespace,,classes,ns_id,ns
+,,,,,,
+Datatype,namespace,Namespace,,datatypes,ns_id,ns
+,,,,,,
+Annotation,namespace,Namespace,,annot_types,ns_id,ns
+,,,,,,
+ClassTag,class,Classifier,,class_annots,class_id,classes
+ClassTag,annotation,Annotation,,class_annots,type_id,annot_types
+,,,,,,
+PropertyTag,property,Property,,property_annots,property_id,properties
+PropertyTag,annotation,Annotation,,property_annots,type_id,annot_types
+,,,,,,
+Classifier,subClassOf,Classifier,,"select a.id,  class_2_id from classes a, cc_rels b where a.id = b.class_1_id and b.type_id = 1 ",class_2_id,
+Classifier,eqClass,Classifier,,"select a.id,  class_2_id from classes a, cc_rels b where a.id = b.class_1_id and b.type_id = 2 ",class_2_id,
+Classifier,intersects,Classifier,,"select a.id,  class_2_id from classes a, cc_rels b where a.id = b.class_1_id and b.type_id =3 ",class_2_id,

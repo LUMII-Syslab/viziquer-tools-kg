@@ -44,7 +44,8 @@ diagram illustrated the knowledge graph schema obtained for the Nobel Prizes dat
 
 - Python 3.8 or higher
 - [Optional dependencies, e.g., `pip`]
-- Postgres DBMS. Steps to install Postgres DBMS are described [here](https://www.postgresql.org/). 
+- Postgres DBMS. Steps to install stand-alone Postgres DBMS are described [here](https://www.postgresql.org/). If you want to experiment with schemas and databases provided in this repo you can start the provided containers and connect to a postgres running inside these containers.
+
 
 ### Installation Steps
 
@@ -53,7 +54,7 @@ diagram illustrated the knowledge graph schema obtained for the Nobel Prizes dat
     - and restore the provided dump of db, containing schema descriptions to this newly created db. The restore can be done by running the following command from console:
 
     ```bash
-    ./psql -U postgres -h 5433 -d rdf -f rdfmeta_demo.sql
+    ./psql -U postgres -h localhost -p 5433 -d rdf -f rdfmeta_demo.sql
     ```
     where postgres is user name, 5433 is db port and rdf is the name of the newly created database.
 
@@ -64,11 +65,20 @@ diagram illustrated the knowledge graph schema obtained for the Nobel Prizes dat
     pip install -r requirements.txt
     ```
 3. Create .env file. This file must contain values for the following variables : 
-- USER_NAME
-- USER_PSW
-- PORT
-- DATA_BASE_NAME
+- DB_URL
+- DB_SCHEMA
+- RDF_SCHEMA_NS
+- CLASS_MAPPINGS
+- LINK_MAPPINGS
+- OUTPUT_FILE
+- RDF_FILES
+- CSV_FILE_DELIMITER
 
+If you are not sure how to set these values - you can take a look at the file [sample.env](/sample.env) it is prepopulated with sample values for environment variables. 
+
+Sample.env is created just for illustration purposes. Values used during program execution are taken from .env file. 
+
+<!--
 4. Set appropriate values for the following constants in python code (top part of the main.py file):
 - DB_SCHEMA_NAME
 - HOST
@@ -76,7 +86,7 @@ diagram illustrated the knowledge graph schema obtained for the Nobel Prizes dat
 - FPATH_TO_CLASS_MAPPINGS
 - FPATH_TO_LINK_MAPPINGS
 - RDF_SCHEMA_NS
-
+-->
 
 ## Usage
 
@@ -88,7 +98,9 @@ python ./main.py
 
 During its execution, this program takes user-supplied mappings and on the  basis of the information found in these mappings, generates RDF triples. 
 
-These mappings are written into .xls files: one file for [class and attribute mappings ](/Mappings_1.xlsx), and the other for [link mappings](/Mappings_links_1.xlsx). Before passing these mapping files to the .py script, they need to be saved as .csv files. Examples of these 
-[.csv files](/Mappings_1.csv) can also be found in this repository.
+These mappings are written into .xls files: one file for [class and attribute mappings ](/Mappings.xlsx), and the other for [link mappings](/Mappings_links.xlsx). Before passing these mapping files to the .py script, they need to be saved as .csv files. Examples of these 
+[.csv files](/Mappings.csv) can also be found in this repository.
 
-If the program completes successfully, a series of .ntriples files should appear in the directory TRG_DIR_FOR_RDF_FILES. These files can then be uploaded to any RDF data store that supports .ntriple serialization format (e.g. [OpenLink Virtuoso](https://virtuoso.openlinksw.com/) or Apache Jena).
+If the program completes successfully, an .nt file containing generated RDF triples should appear in the filepath provided in variable OUTPUT_FILE. 
+
+This file can then be uploaded to any RDF data store that supports .ntriple serialization format (e.g. [OpenLink Virtuoso](https://virtuoso.openlinksw.com/) or Apache Jena).
