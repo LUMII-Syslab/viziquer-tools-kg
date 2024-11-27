@@ -49,7 +49,7 @@ diagram illustrated the knowledge graph schema obtained for the Nobel Prizes dat
 
 ### Installation Steps
 
-1. Import database with schema descriptions to Postgres. In this repo we provide sql file [rdfmeta_demo.sql](/rdfmeta_demo.sql) with multiple schema descriptions. To import this file one needs to:
+1. Import database with schema descriptions to Postgres. In this repo we provide sql file [rdfmeta_demo.sql](./rdfmeta_demo.sql) with multiple schema descriptions. To import this file one needs to:
     - create an empty database named name
     - and restore the provided dump of db, containing schema descriptions to this newly created db. The restore can be done by running the following command from console:
 
@@ -74,7 +74,7 @@ diagram illustrated the knowledge graph schema obtained for the Nobel Prizes dat
 - RDF_FILES
 - CSV_FILE_DELIMITER
 
-If you are not sure how to set these values - you can take a look at the file [sample.env](/sample.env) it is prepopulated with sample values for environment variables. 
+If you are not sure how to set these values - you can take a look at the file [sample.env](./sample.env) it is prepopulated with sample values for environment variables. 
 
 Sample.env is created just for illustration purposes. Values used during program execution are taken from .env file. 
 
@@ -98,8 +98,8 @@ python ./main.py
 
 During its execution, this program takes user-supplied mappings and on the  basis of the information found in these mappings, generates RDF triples. 
 
-These mappings are written into .xls files: one file for [class and attribute mappings ](/Mappings.xlsx), and the other for [link mappings](/Mappings_links.xlsx). Before passing these mapping files to the .py script, they need to be saved as .csv files. Examples of these 
-[.csv files](/Mappings.csv) can also be found in this repository.
+These mappings are written into .xls files: one file for [class and attribute mappings ](./Mappings.xlsx), and the other for [link mappings](./Mappings_links.xlsx). Before passing these mapping files to the .py script, they need to be saved as .csv files. Examples of these 
+[.csv files](./Mappings.csv) can also be found in this repository.
 
 If the program completes successfully, an .nt file containing generated RDF triples should appear in the filepath provided in variable OUTPUT_FILE. 
 
