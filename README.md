@@ -5,10 +5,17 @@ used by the [ViziQuer](https://github.com/LUMII-Syslab/viziquer) tool as the kno
 they can be presented and analyzed in the ViziQuer environment themselves, 
 and can be used by other knowledge graph tools, as well.
 
-The repository supports a demo presentation "Visual Data and Schema Queries over Knowledge Graphs" by Sergejs Rikačovs and Kārlis Čerāns at [EKAW'24](https://event.cwi.nl/ekaw2024/).
+The repository supports a demo presentation "Visual Data and Schema Queries over Knowledge Graphs" 
+by Sergejs Rikačovs and Kārlis Čerāns at [EKAW'24](https://event.cwi.nl/ekaw2024/).
+
+The software for creating a knowledge graph representation of a data schema from the ViziQuer tool database
+is available in the `services/create_schema_kg` folder (with the usage instructions provided therein, as well).
 
 The repository has been built as a fork from [ViziQuer Tools](https://github.com/LUMII-Syslab/viziquer-tools) environment that provides containers for [ViziQuer](https://github.com/LUMII-Syslab/viziquer)
-and [Data Shape Server](https://github.com/LUMII-Syslab/data-shape-server) forming together a locally runnable visual schema and query environment. 
+and [Data Shape Server](https://github.com/LUMII-Syslab/data-shape-server) 
+forming together a locally runnable visual schema and query environment. 
+The ViziQuer Tools instructions (provided below in this readme instruction) apply for running the containers of
+this repository, as well.
 
 This repository provides a new initialization of the ViziQuer Tools environment 
 (in the `db/init/pg` folder) with the schemas for `nobel_prizes` and `nobel_prizes_schema`
