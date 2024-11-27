@@ -101,6 +101,6 @@ During its execution, this program takes user-supplied mappings and on the  basi
 These mappings are written into .xls files: one file for [class and attribute mappings ](./Mappings.xlsx), and the other for [link mappings](./Mappings_links.xlsx). Before passing these mapping files to the .py script, they need to be saved as .csv files. Examples of these 
 [.csv files](./Mappings.csv) can also be found in this repository.
 
-If the program completes successfully, an .nt file containing generated RDF triples should appear in the filepath provided in variable OUTPUT_FILE. 
+If the program completes successfully, an .nt file containing generated RDF triples should appear in the filepath provided in variable OUTPUT_FILE. For instance, see [generated.nt](./generated.nt).
 
 This file can then be uploaded to any RDF data store that supports .ntriple serialization format (e.g. [OpenLink Virtuoso](https://virtuoso.openlinksw.com/) or Apache Jena).
