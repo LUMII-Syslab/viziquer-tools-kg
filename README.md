@@ -1,17 +1,29 @@
 # Visual Data and Schema Queries over Knowledge Graphs
 
-This repository contains the supporting material and running environment for presenting and analyzing the data schemas, 
-as used by the [ViziQuer](https://github.com/LUMII-Syslab/viziquer), as the knowledge graphs themselves.
+This repository contains the supporting material and running environment for presenting the data schemas 
+used by the [ViziQuer](https://github.com/LUMII-Syslab/viziquer) tool as the knowledge graphs themselves, so that
+they can be presented and analyzed in the ViziQuer environment themselves, 
+and can be used by other knowledge graph tools, as well.
 
 The repository supports a demo presentation "Visual Data and Schema Queries over Knowledge Graphs" by Sergejs Rikačovs and Kārlis Čerāns at [EKAW'24](https://event.cwi.nl/ekaw2024/).
 
 The repository has been built as a fork from [ViziQuer Tools](https://github.com/LUMII-Syslab/viziquer-tools) environment that provides containers for [ViziQuer](https://github.com/LUMII-Syslab/viziquer)
 and [Data Shape Server](https://github.com/LUMII-Syslab/data-shape-server) forming together a locally runnable visual schema and query environment. 
 
-This repository provides a new initialization of the ViziQuer Tools environment (in the `db/init/pg` folder) with the schemas for `Nobel Prizes data` and `Nobel Prizes data schema`
-that are referred to from the paper. The considered schemas may be available on [ViziQuer Playground](https://viziquer.app), as well, at least for a while, however, this repository is considered to be 
+This repository provides a new initialization of the ViziQuer Tools environment 
+(in the `db/init/pg` folder) with the schemas for `nobel_prizes` and `nobel_prizes_schema`
+that are referred to from the paper. The considered schemas may be available on 
+[ViziQuer Playground](https://viziquer.app), as well, at least for a while, however, this repository is considered to be 
 the stable resource supporting the papers' presentation.
 
+For an initial ultra-fast access to visual query environment over the 
+Nobel Prizes data schema structure knowledge graph check the 
+[public diagram](https://viziquer.app/public-diagram?schema=nobel_prizes_schema) 
+(only visual queries available, for data schema visualization go to the full 
+[ViziQuer Playground](https://viziquer.app), or run the tool locally).
+
+The general information about the ViziQuer tool can be obtained from the [tool website](https://viziquer.lumii.lv) 
+and its [GitHub repository](https://github.com/LUMII-Syslab/viziquer) (includes also the [tool wiki](https://github.com/LUMII-Syslab/viziquer/wiki)). 
 
 # ViziQuer Tools
 
@@ -20,7 +32,7 @@ This repository contains scripts and initial data for starting your own copy of 
 This repository is just a glue + initial data; the tools themselves come from the following repositories:
 - [ViziQuer](https://github.com/LUMII-Syslab/viziquer)
 - [Data Shape Server](https://github.com/LUMII-Syslab/data-shape-server)
-- [OBIS-SchemaExtractor](https://github.com/LUMII-Syslab/OBIS-SchemaExtractor)
+- [OBIS-SchemaExtractor](https://github.com/LUMII-Syslab/OBIS-SchemaExtractor) (to be included in a future release).
 
 For more information on the ViziQuer tools family, please visit [viziquer.lumii.lv](https://viziquer.lumii.lv/).
 
@@ -73,8 +85,6 @@ The DSS instance API is available via `http://localhost:9005`
 The Postgres server is available at `localhost:5433`
 
 ## Populating the Data
-
-Initially, two example schemas are included: *Nobel_prizes* and *Starwars*.
 
 To add a schema for another endpoint, whether public or your own, follow these two steps:
 
