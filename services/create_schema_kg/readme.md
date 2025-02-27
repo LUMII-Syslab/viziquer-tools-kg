@@ -9,6 +9,10 @@
 - [Installation](#installation)
 - [Usage](#usage)
 
+## Acknowledgement
+
+The software module has been created at Institute of Mathematics and Computer Science, University of Latvia, https://lumii.lv, 
+with support from Latvian Science Council grant lzp-2021/1-0389 "Visual Queries in Distributed Knowledge Graphs" (2022-2024).
 
 ## Project Overview
 
