@@ -4,6 +4,8 @@ import os
 
 from enum import Enum
 from dotenv import load_dotenv
+from pathlib import Path
+import re
 
 # Load environment variables from .env file
 load_dotenv()
@@ -25,19 +27,26 @@ DB_SCHEMA = os.getenv('DB_SCHEMA')
 DB_URL = os.getenv('DB_URL')
 
 # CLASS_MAPPINGS = 'Mappings.csv'
-CLASS_MAPPINGS = os.getenv('CLASS_MAPPINGS')
+CLASS_MAPPINGS = os.getenv('CLASS_MAPPINGS', "Mappings.csv").strip() or "Mappings.csv"
 
 # LINK_MAPPINGS = 'Mappings_links.csv'
 LINK_MAPPINGS = os.getenv('LINK_MAPPINGS')
 
 # RDF_SCHEMA_NS='http://schema.vq.app/'
-RDF_SCHEMA_NS = os.getenv('RDF_SCHEMA_NS')
+RDF_SCHEMA_NS = os.getenv('RDF_SCHEMA_NS', "http://schema.vq.app/")
 
 # OUTPUT_FILE = 'generated_rdf.nt'
 OUTPUT_FILE = os.getenv('OUTPUT_FILE')
 
 # CSV_FILE_DELIMITER = ','
-CSV_FILE_DELIMITER = os.getenv('CSV_FILE_DELIMITER')
+CSV_FILE_DELIMITER = os.getenv('CSV_FILE_DELIMITER', ",").strip()
+
+
+# expected to be TRUE or FALSE
+GENERATE_R2RML_MAPPING = os.getenv('GENERATE_R2RML_MAPPING')
+
+R2RML_TARGET_FILE = os.getenv('R2RML_TARGET_FILE', "mappings.ttl").strip() or "mappings.ttl"
+       
 
 def create_connection():
     # return psycopg2.connect(
@@ -64,6 +73,10 @@ def print_constants():
     print("  RDF_SCHEMA_NS=",RDF_SCHEMA_NS)
     print("  OUTPUT_FILE=",OUTPUT_FILE)
     print("  CSV_FILE_DELIMITER=",CSV_FILE_DELIMITER)
+
+    print("  GENERATE_R2RML_MAPPING=",GENERATE_R2RML_MAPPING)
+    print("  R2RML_TARGET_FILE=",R2RML_TARGET_FILE)
+
     print()
     print()
 
@@ -910,45 +923,289 @@ def test_template_substitution():
 #     print("Using ", RDF_FILES , " as target directory for rdf files.")
 #     print()
 
-trg_out_file = open(OUTPUT_FILE, mode='w', encoding="utf-8")
+# ----------------------------------------------------------------------------------------------------------------------------
+# R2RML ģenerators no Mappings.csv
+# ----------------------------------------------------------------------------------------------------------------------------
 
-print_constants()
-print("Loading class mappings ...")
-mappings = load_class_mappings(CLASS_MAPPINGS)
-print("Loading class mappings - done")
-print("Loading link mappings ...")
-linkMappings = load_link_mappings(LINK_MAPPINGS)
-print("Loading link mappings - done")
-
-print("Processing class mappings ...")
-for mapping in mappings:
-    # print(mapping)
-    # print()
-    if mapping.is_class_to_table:
-        # pass
-        # print(mapping)
-        # print()
-        mapping.generate_class_type_triples(trg_out_file)
-    # elif mapping.is_subclass_mapping:
-        # mapping.generate_triples_for_one_subclass(trg_out_file)
-    else:
-        # print(mapping)
-        # print()
-        mapping.generate_attribute_triples(trg_out_file)
-print("Processing class mappings - done.")
-
-print("Processing link mappings ...")
-for lm in linkMappings:
-    # print(lm)
-    lm.generateLinkTriples(trg_out_file)
-print("Processing link mappings - done.")
-# generateTriplesForTag()
+def _normalize_xsd(dt: str) -> str:
+    if not dt:
+        return "string"
+    dt = dt.strip().lower()
+    table = {
+        "str": "string",
+        "string": "string",
+        "text": "string",
+        "int": "integer",
+        "integer": "integer",
+        "bool": "boolean",
+        "boolean": "boolean",
+        "double": "double",
+        "float": "double",
+        "decimal": "double",
+        "date": "date",
+        "datetime": "dateTime",
+        "uri": "URI",
+    }
+    return table.get(dt, dt)
 
 
-# m = Class2Table("Classifier", None, None, "Classes", None, True)
-# m.generate_class_type_triples()
+def _is_sql_query(table_expr: str) -> bool:
+    return bool(table_expr) and table_expr.strip().lower().startswith("select")
 
-# m = Class2Table("Classifier", "instanceCount", "integer", "Classes", "cnt", False)
-# m.generate_attribute_triples()
+
+def _read_mappings_csv(csv_path):
+    """
+    Nolasa CSV ar kolonnām:
+    [0] URI pattern part
+    [1] Class
+    [2] Property
+    [3] DataType
+    [4] Table
+    [5] Column
+
+    Atgriež bloku sarakstu: katrs bloks = klase + tās īpašības.
+    Katrai vienībai pievieno 'line' lauku (1-based).
+    """
+    blocks = []
+    current = None
+
+    
+
+    with open(csv_path, "r", encoding="utf-8") as f:
+        reader = csv.reader(f, delimiter=CSV_FILE_DELIMITER)
+
+        # vienkārši izlaižam pirmo (header) rindu
+        header = next(reader, None)
+
+        line_no = 1  # sākam skaitīt no 2. rindas (jo 1. ir header)
+        for row in reader:
+            line_no += 1
+
+            # izlaidām pilnīgi tukšas rindas
+            if not row or all((c is None or str(c).strip() == "") for c in row):
+                continue
+
+            # droši paņemam 6 laukus
+            vals = (row + [""] * 6)[:6]
+            uri_part, cls, prop, dtype, table_expr, column = [v.strip() for v in vals]
+
+            # ja ir klase -> jauns bloks
+            if cls:
+                current = {
+                    "line": line_no,
+                    "uri_pattern": uri_part,
+                    "class_name": cls,
+                    "table_expr": table_expr,
+                    "is_sql": _is_sql_query(table_expr),
+                    "properties": [],
+                }
+                blocks.append(current)
+            else:
+                if current is None:
+                    print(f"[R2RML][WARN] Property rinda bez iepriekšējas klases (CSV rinda {line_no}). Ignorēju.")
+                    continue
+                current["properties"].append({
+                    "line": line_no,
+                    "name": prop,
+                    "datatype": _normalize_xsd(dtype),
+                    "table_expr": table_expr,
+                    "column": column,
+                })
+    return blocks
+
+
+def generate_r2rml_mappings(target_file: str,
+                            csv_path: str = None,
+                            rdf_schema_ns: str = None) -> None:
+    """
+    Ģenerē R2RML mappingu no Mappings.csv un saglabā failā target_file.
+
+    Funkcionalitāte:
+    - nolasām CSV, grupējam klases un īpašības;
+    - ja 'Table' ir 'SELECT * ...', aizstājam ar minimālo kolonu sarakstu (id + property kolonnas);
+    - subjekts tiek ģenerēts ar rr:template "NS + URI pattern + _{id}";
+    - pie katra TriplesMap un property ierakstām komentāru ar CSV rindas numuru.
+    """
+
+    from pathlib import Path
+    import os, csv, re
+
+    # --- iestatījumi no .env ---
+    subject_id_column = os.getenv("SUBJECT_ID_COLUMN", "id")
+    delimiter = os.getenv("CSV_DELIMITER", ",").strip() or ","
+    csv_path = csv_path or os.getenv("CLASS_MAPPINGS", "Mappings.csv")
+    rdf_schema_ns = (rdf_schema_ns or os.getenv("RDF_SCHEMA_NS", "http://schema.vq.app/")).rstrip("/") + "/"
+
+    # --- drošības pārbaudes ---
+    csv_file = Path(csv_path)
+    if not csv_file.exists():
+        print(f"[R2RML][ERROR] CSV nav atrasts: {csv_file}")
+        return
+
+    print(f"[R2RML] Lasu mappingus no: {csv_file.resolve()}")
+
+    # --- nolasām CSV ---
+    blocks = []
+    current = None
+    with open(csv_file, "r", encoding="utf-8-sig", newline="") as f:
+        reader = csv.reader(f, delimiter=delimiter)
+        header = next(reader, None)  # vienkārši izlaižam virsrakstu rindu
+        line_no = 1
+        for row in reader:
+            line_no += 1
+            if not row or all(str(c).strip() == "" for c in row):
+                continue
+            vals = (row + [""] * 6)[:6]
+            uri_part, cls, prop, dtype, table_expr, column = [v.strip() for v in vals]
+
+            # jaunas klases sākums
+            if cls:
+                current = {
+                    "line": line_no,
+                    "uri_pattern": uri_part,
+                    "class_name": cls,
+                    "table_expr": table_expr,
+                    "is_sql": bool(table_expr.lower().startswith("select")),
+                    "properties": []
+                }
+                blocks.append(current)
+            elif current:
+                current["properties"].append({
+                    "line": line_no,
+                    "name": prop,
+                    "datatype": dtype.strip().lower() or "string",
+                    "column": column
+                })
+
+    if not blocks:
+        print("[R2RML][WARN] CSV ir tukšs — nekas netika ģenerēts.")
+        return
+
+    # --- sākam TTL failu ---
+    lines = [
+        "@prefix rr:   <http://www.w3.org/ns/r2rml#> .",
+        "@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .",
+        f"@prefix :     <{rdf_schema_ns}> .",
+        ""
+    ]
+
+    tm_counter = 0
+
+    for block in blocks:
+        tm_counter += 1
+        cls = block["class_name"]
+        tm_id = f"<#TM_{re.sub(r'[^A-Za-z0-9_]', '_', cls)}_{tm_counter}>"
+
+        # --- loģiskā tabula (SQL apstrāde) ---
+        table_expr = block["table_expr"].strip()
+        if block["is_sql"] and re.match(r"(?i)^select\s+\*\s+from\s+", table_expr):
+            # savācam kolonnas
+            needed_cols = {subject_id_column}
+            needed_cols.update(p["column"] for p in block["properties"] if p.get("column"))
+            cols_sql = ", ".join(sorted(needed_cols))
+            table_expr = re.sub(r"(?i)^select\s+\*\s+", f"SELECT {cols_sql} ", table_expr)
+
+        # --- TriplesMap sākums ---
+        lines.append(f"# --- from {csv_file.name} line {block['line']} ---")
+        lines.append(f"{tm_id}")
+        lines.append("  a rr:TriplesMap ;")
+
+        if block["is_sql"]:
+            lines.append(f'  rr:logicalTable [ rr:sqlQuery "{table_expr}" ] ;')
+        else:
+            lines.append(f'  rr:logicalTable [ rr:tableName "{table_expr}" ] ;')
+
+        # --- subjekts ar rr:template ---
+        lines.append("  rr:subjectMap [")
+        lines.append(f'    rr:template "{rdf_schema_ns}{block["uri_pattern"]}_{{{subject_id_column}}}" ;')
+        lines.append(f"    rr:class <{rdf_schema_ns}{cls}>")
+        lines.append("  ] ;")
+
+        # --- īpašības ---
+        for p in block["properties"]:
+            if not p["name"]:
+                continue
+            dt = p["datatype"]
+            name = p["name"]
+            col = p["column"]
+            lines.append("  rr:predicateObjectMap [")
+            lines.append(f'#   source {csv_file.name} line {p["line"]}: Property={name}, DataType={dt}, Column={col}')
+            lines.append(f"    rr:predicate <{rdf_schema_ns}{name}> ;")
+            if dt.lower() == "uri":
+                lines.append("    rr:objectMap [")
+                lines.append(f'      rr:column "{col}" ;')
+                lines.append("      rr:termType rr:IRI")
+                lines.append("    ]")
+            else:
+                lines.append("    rr:objectMap [")
+                lines.append(f'      rr:column "{col}" ;')
+                lines.append(f"      rr:datatype xsd:{dt.lower()}")
+                lines.append("    ]")
+            lines.append("  ] ;")
+
+        # --- aizveram bloku ---
+        if lines[-1].endswith(";"):
+            lines[-1] = lines[-1][:-1] + " ."
+        lines.append("")
+
+    # --- rakstām failā ---
+    target = Path(target_file)
+    target.write_text("\n".join(lines), encoding="utf-8")
+    print(f"[R2RML] OK — uzģenerēts {len(blocks)} TriplesMaps -> {target.resolve()}")
+
+if __name__ == "__main__":    
+    
+    print_constants()
+
+    if GENERATE_R2RML_MAPPING and GENERATE_R2RML_MAPPING.lower() == 'true':
+    
+        generate_r2rml_mappings(
+            target_file=R2RML_TARGET_FILE,
+            csv_path=CLASS_MAPPINGS,
+            rdf_schema_ns=RDF_SCHEMA_NS
+        )
+        
+    else:    
+
+        trg_out_file = open(OUTPUT_FILE, mode='w', encoding="utf-8")
+
+        
+        print("Loading class mappings ...")
+        mappings = load_class_mappings(CLASS_MAPPINGS)
+        print("Loading class mappings - done")
+        print("Loading link mappings ...")
+        linkMappings = load_link_mappings(LINK_MAPPINGS)
+        print("Loading link mappings - done")
+
+        print("Processing class mappings ...")
+        for mapping in mappings:
+            # print(mapping)
+            # print()
+            if mapping.is_class_to_table:
+                # pass
+                # print(mapping)
+                # print()
+                mapping.generate_class_type_triples(trg_out_file)
+            # elif mapping.is_subclass_mapping:
+                # mapping.generate_triples_for_one_subclass(trg_out_file)
+            else:
+                # print(mapping)
+                # print()
+                mapping.generate_attribute_triples(trg_out_file)
+        print("Processing class mappings - done.")
+
+        print("Processing link mappings ...")
+        for lm in linkMappings:
+            # print(lm)
+            lm.generateLinkTriples(trg_out_file)
+        print("Processing link mappings - done.")
+        # generateTriplesForTag()
+
+
+        # m = Class2Table("Classifier", None, None, "Classes", None, True)
+        # m.generate_class_type_triples()
+
+        # m = Class2Table("Classifier", "instanceCount", "integer", "Classes", "cnt", False)
+        # m.generate_attribute_triples()
 
 
